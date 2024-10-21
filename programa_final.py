@@ -2,16 +2,17 @@ import re
 import sys
 import ply.lex as lex
 import ply.yacc as yacc
+import matplotlib.pyplot as plt
 
 # Definición de tokens para el analizador léxico
 token_specification = [
-    ('NUMEROS',   r'\d+(\.\d*)?'),                   
-    ('DELIMITADORES',   r'[""\=(){}:;,.#]'),         
-    ('IDENTIFICADORES', r'[A-Za-z_]\w*'),            
-    ('OPERADORES',       r'[+\-*/%]'),               
-    ('NUEVALINEA',  r'\n'),                          
-    ('SKIP',     r'[ \t]+'),                         
-    ('MISMATCH', r'.'),                              
+    ('NUMEROS', r'\d+(\.\d*)?'),
+    ('DELIMITADORES', r'[""\=(){}:;,.#]'),
+    ('IDENTIFICADORES', r'[A-Za-z_]\w*'),
+    ('OPERADORES', r'[+\-*/%]'),
+    ('NUEVALINEA', r'\n'),
+    ('SKIP', r'[ \t]+'),
+    ('MISMATCH', r'.'),
 ]
 token_re = '|'.join(f'(?P<{name}>{pattern})' for name, pattern in token_specification)
 
@@ -27,8 +28,8 @@ def analizador(codigo):
 
         if kind == 'NUMEROS':
             value = float(value) if '.' in value else int(value)
-        elif kind == 'IDENTIFICADORES' and value in {'if','elif', 'else','for','range','in', 'while', 'return','break', 'function','int','double','float','import','input','print'}:
-             kind = 'PALABRA_CLAVE'
+        elif kind == 'IDENTIFICADORES' and value in {'if', 'elif', 'else', 'for', 'range', 'in', 'while', 'return', 'break', 'function', 'int', 'double', 'float', 'import', 'input', 'print'}:
+            kind = 'PALABRA_CLAVE'
         elif kind == 'NUEVALINEA':
             line_start = match.end()
             line_num += 1
@@ -107,24 +108,40 @@ def p_error(p):
 
 parser = yacc.yacc()
 
+def dibujar_arbol(nodo, x=0, y=0, layer=1):
+    """ Dibuja un árbol sintáctico en un gráfico utilizando matplotlib. """
+    if isinstance(nodo, tuple):
+        # Dibuja el nodo
+        plt.text(x, y, str(nodo[0]), ha='center', va='center', fontsize=16 + layer, bbox=dict(boxstyle='round,pad=0.4', edgecolor='black', facecolor='lightgray'))
+
+        # Ajuste para las posiciones de los hijos
+        offset = 1 / (2 ** layer)  # Espaciado entre nodos
+        # Dibuja el hijo izquierdo
+        if isinstance(nodo[1], tuple) or isinstance(nodo[1], (int, float)):
+            plt.plot([x, x - offset], [y, y - 1], color='black')  # Línea hacia el hijo izquierdo
+            dibujar_arbol(nodo[1], x - offset, y - 1, layer + 1)
+        # Dibuja el hijo derecho
+        if isinstance(nodo[2], tuple) or isinstance(nodo[2], (int, float)):
+            plt.plot([x, x + offset], [y, y - 1], color='black')  # Línea hacia el hijo derecho
+            dibujar_arbol(nodo[2], x + offset, y - 1, layer + 1)
+    else:
+        # Dibuja el valor del nodo
+        plt.text(x, y, str(nodo), ha='center', va='center', fontsize=16, bbox=dict(boxstyle='round,pad=0.4', edgecolor='black', facecolor='lightgreen'))
+
 def generar_arbol(codigo):
     try:
         resultado = parser.parse(codigo)
         if resultado:
             print("Árbol sintáctico generado:")
-            imprimir_arbol(resultado)
+            plt.figure(figsize=(14, 12))  # Ajusta el tamaño de la figura
+            plt.title("Árbol Sintáctico", fontsize=20)
+            plt.axis('off')  # No mostrar los ejes
+            dibujar_arbol(resultado)  # Dibuja el árbol
+            plt.show()  # Muestra el gráfico
         else:
             print("Error: no se pudo generar el árbol sintáctico.")
     except Exception as e:
         print(f"Error: {e}")
-
-def imprimir_arbol(nodo, nivel=0):
-    if isinstance(nodo, tuple):
-        print(' ' * nivel + str(nodo[0]))
-        imprimir_arbol(nodo[1], nivel + 4)
-        imprimir_arbol(nodo[2], nivel + 4)
-    else:
-        print(' ' * nivel + str(nodo))
 
 # Programa principal
 def main():
@@ -145,5 +162,3 @@ def main():
 if __name__ == "__main__":
     main()
 
-#codigo de ejemplo
-3 + 5 * ( 10 - 4 )
